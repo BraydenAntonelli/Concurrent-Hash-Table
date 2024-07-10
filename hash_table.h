@@ -2,7 +2,12 @@
 #define HASH_TABLE_H
 
 #include <stdint.h>
-#include <windows.h> // Include Windows.h for synchronization primitives
+
+#if defined(_WIN32) || defined(_WIN64)
+#include <windows.h>
+#else
+#include <pthread.h>
+#endif
 
 typedef struct hash_struct {
     uint32_t hash;
@@ -14,8 +19,13 @@ typedef struct hash_struct {
 typedef struct {
     hashRecord** table;
     int size;
-    HANDLE writeLock; // Mutex for write lock
-    HANDLE readLock;  // Mutex for read lock
+#if defined(_WIN32) || defined(_WIN64)
+    CRITICAL_SECTION writeLock;  // Critical section for write lock
+    CRITICAL_SECTION readLock;   // Critical section for read lock
+#else
+    pthread_mutex_t writeLock;  // Mutex for write lock
+    pthread_rwlock_t rwLock;    // Read-write lock for read operations
+#endif
     int lockAcquisitions;
     int lockReleases;
 } ConcurrentHashTable;
@@ -25,6 +35,6 @@ void insert(ConcurrentHashTable* table, char* name, uint32_t salary, FILE* outpu
 void delete(ConcurrentHashTable* table, char* name, FILE* outputFile);
 uint32_t search(ConcurrentHashTable* table, char* name, FILE* outputFile);
 void print_table(ConcurrentHashTable* table, FILE* outputFile);
-uint32_t jenkins_one_at_a_time_hash(char* key); // Add this line
+uint32_t jenkins_one_at_a_time_hash(char* key);
 
 #endif // HASH_TABLE_H

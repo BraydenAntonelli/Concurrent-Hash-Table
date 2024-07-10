@@ -22,21 +22,30 @@ ConcurrentHashTable* create_hash_table(int size) {
     ConcurrentHashTable* table = (ConcurrentHashTable*)malloc(sizeof(ConcurrentHashTable));
     table->table = (hashRecord**)calloc(size, sizeof(hashRecord*));
     table->size = size;
-    table->writeLock = CreateMutex(NULL, FALSE, NULL);
-    table->readLock = CreateMutex(NULL, FALSE, NULL);
+#if defined(_WIN32) || defined(_WIN64)
+    InitializeCriticalSection(&table->writeLock);
+    InitializeCriticalSection(&table->readLock);
+#else
+    pthread_mutex_init(&table->writeLock, NULL);
+    pthread_rwlock_init(&table->rwLock, NULL);
+#endif
     table->lockAcquisitions = 0;
     table->lockReleases = 0;
     return table;
 }
 
 void insert(ConcurrentHashTable* table, char* name, uint32_t salary, FILE* outputFile) {
-    uint32_t hash = jenkins_one_at_a_time_hash(name);
+    uint32_t hash = jenkins_one_at_a_time_hash(name) % table->size;
 
-    WaitForSingleObject(table->writeLock, INFINITE);
+#if defined(_WIN32) || defined(_WIN64)
+    EnterCriticalSection(&table->writeLock);
+#else
+    pthread_mutex_lock(&table->writeLock);
+#endif
     table->lockAcquisitions++;
     fprintf(outputFile, "WRITE LOCK ACQUIRED\n");
 
-    hashRecord* current = table->table[hash % table->size];
+    hashRecord* current = table->table[hash];
 
     while (current != NULL && strcmp(current->name, name) != 0) {
         current = current->next;
@@ -47,26 +56,35 @@ void insert(ConcurrentHashTable* table, char* name, uint32_t salary, FILE* outpu
         newRecord->hash = hash;
         strcpy(newRecord->name, name);
         newRecord->salary = salary;
-        newRecord->next = table->table[hash % table->size];
-        table->table[hash % table->size] = newRecord;
+        newRecord->next = table->table[hash];
+        table->table[hash] = newRecord;
     } else {
         current->salary = salary;
     }
 
-    ReleaseMutex(table->writeLock);
-    table->lockReleases++;
     fprintf(outputFile, "WRITE LOCK RELEASED\n");
+
+#if defined(_WIN32) || defined(_WIN64)
+    LeaveCriticalSection(&table->writeLock);
+#else
+    pthread_mutex_unlock(&table->writeLock);
+#endif
+    table->lockReleases++;
     fprintf(outputFile, "INSERT,%u,%s,%u\n", hash, name, salary);
 }
 
 void delete(ConcurrentHashTable* table, char* name, FILE* outputFile) {
-    uint32_t hash = jenkins_one_at_a_time_hash(name);
+    uint32_t hash = jenkins_one_at_a_time_hash(name) % table->size;
 
-    WaitForSingleObject(table->writeLock, INFINITE);
+#if defined(_WIN32) || defined(_WIN64)
+    EnterCriticalSection(&table->writeLock);
+#else
+    pthread_mutex_lock(&table->writeLock);
+#endif
     table->lockAcquisitions++;
     fprintf(outputFile, "WRITE LOCK ACQUIRED\n");
 
-    hashRecord* current = table->table[hash % table->size];
+    hashRecord* current = table->table[hash];
     hashRecord* prev = NULL;
 
     while (current != NULL && strcmp(current->name, name) != 0) {
@@ -76,48 +94,71 @@ void delete(ConcurrentHashTable* table, char* name, FILE* outputFile) {
 
     if (current != NULL) {
         if (prev == NULL) {
-            table->table[hash % table->size] = current->next;
+            table->table[hash] = current->next;
         } else {
             prev->next = current->next;
         }
         free(current);
     }
 
-    ReleaseMutex(table->writeLock);
-    table->lockReleases++;
     fprintf(outputFile, "WRITE LOCK RELEASED\n");
+
+#if defined(_WIN32) || defined(_WIN64)
+    LeaveCriticalSection(&table->writeLock);
+#else
+    pthread_mutex_unlock(&table->writeLock);
+#endif
+    table->lockReleases++;
     fprintf(outputFile, "DELETE,%s\n", name);
 }
 
 uint32_t search(ConcurrentHashTable* table, char* name, FILE* outputFile) {
-    uint32_t hash = jenkins_one_at_a_time_hash(name);
+    uint32_t hash = jenkins_one_at_a_time_hash(name) % table->size;
 
-    WaitForSingleObject(table->readLock, INFINITE);
+#if defined(_WIN32) || defined(_WIN64)
+    EnterCriticalSection(&table->readLock);
+#else
+    pthread_rwlock_rdlock(&table->rwLock);
+#endif
     table->lockAcquisitions++;
     fprintf(outputFile, "READ LOCK ACQUIRED\n");
 
-    hashRecord* current = table->table[hash % table->size];
+    hashRecord* current = table->table[hash];
 
     while (current != NULL) {
         if (strcmp(current->name, name) == 0) {
-            ReleaseMutex(table->readLock);
-            table->lockReleases++;
             fprintf(outputFile, "READ LOCK RELEASED\n");
+
+#if defined(_WIN32) || defined(_WIN64)
+            LeaveCriticalSection(&table->readLock);
+#else
+            pthread_rwlock_unlock(&table->rwLock);
+#endif
+            table->lockReleases++;
             fprintf(outputFile, "SEARCH,%s\n", name);
             return current->salary;
         }
         current = current->next;
     }
 
-    ReleaseMutex(table->readLock);
-    table->lockReleases++;
     fprintf(outputFile, "READ LOCK RELEASED\n");
+
+#if defined(_WIN32) || defined(_WIN64)
+    LeaveCriticalSection(&table->readLock);
+#else
+    pthread_rwlock_unlock(&table->rwLock);
+#endif
+    table->lockReleases++;
     fprintf(outputFile, "SEARCH,%s\n", name);
     return 0;
 }
 
 void print_table(ConcurrentHashTable* table, FILE* outputFile) {
-    WaitForSingleObject(table->readLock, INFINITE);
+#if defined(_WIN32) || defined(_WIN64)
+    EnterCriticalSection(&table->readLock);
+#else
+    pthread_rwlock_rdlock(&table->rwLock);
+#endif
     table->lockAcquisitions++;
     fprintf(outputFile, "READ LOCK ACQUIRED\n");
 
@@ -129,7 +170,12 @@ void print_table(ConcurrentHashTable* table, FILE* outputFile) {
         }
     }
 
-    ReleaseMutex(table->readLock);
-    table->lockReleases++;
     fprintf(outputFile, "READ LOCK RELEASED\n");
+
+#if defined(_WIN32) || defined(_WIN64)
+    LeaveCriticalSection(&table->readLock);
+#else
+    pthread_rwlock_unlock(&table->rwLock);
+#endif
+    table->lockReleases++;
 }
