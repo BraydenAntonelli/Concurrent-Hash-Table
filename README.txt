@@ -1,7 +1,4 @@
-## Dependencies
-
-- MinGW-w64 (for compiling and linking on Windows)
-- Windows API (for thread synchronization)
+BY: Brayden Antonelli, , ,
 
 # Concurrent Hash Table Project
 
@@ -10,7 +7,7 @@ and printing. The operations are executed based on commands read from a file nam
 
 ## Compilation
 
-To compile the project, use the following command: 'mingw32-make'
+To compile the project, use the following command: 'mingw32-make' = for windows  'make' = mac/linux
 
 
 This will generate an executable named `chash`.
