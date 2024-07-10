@@ -1,7 +1,4 @@
-## Dependencies
-
-- MinGW-w64 (for compiling and linking on Windows)
-- Windows API (for thread synchronization)
+BY: Brayden Antonelli, , ,
 
 # Concurrent Hash Table Project
 
