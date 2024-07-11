@@ -7,7 +7,7 @@ and printing. The operations are executed based on commands read from a file nam
 
 ## Compilation
 
-To compile the project, use the following command: 'mingw32-make' = for windows  'make' = mac/linux
+To compile the project, use the following command: 'make'
 
 
 This will generate an executable named `chash`.
