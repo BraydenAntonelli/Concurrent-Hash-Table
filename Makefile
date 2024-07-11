@@ -5,7 +5,7 @@ CFLAGS = -Wall
 ifeq ($(OS),Windows_NT)
     LDFLAGS =
 else
-    LDFLAGS = -pthread
+    LDFLAGS = -pthread -lc
 endif
 
 OBJ = chash.o hash_table.o
