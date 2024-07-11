@@ -22,13 +22,8 @@ ConcurrentHashTable* create_hash_table(int size) {
     ConcurrentHashTable* table = (ConcurrentHashTable*)malloc(sizeof(ConcurrentHashTable));
     table->table = (hashRecord**)calloc(size, sizeof(hashRecord*));
     table->size = size;
-#if defined(_WIN32) || defined(_WIN64)
-    InitializeCriticalSection(&table->writeLock);
-    InitializeCriticalSection(&table->readLock);
-#else
     pthread_mutex_init(&table->writeLock, NULL);
     pthread_rwlock_init(&table->rwLock, NULL);
-#endif
     table->lockAcquisitions = 0;
     table->lockReleases = 0;
     return table;
@@ -37,11 +32,7 @@ ConcurrentHashTable* create_hash_table(int size) {
 void insert(ConcurrentHashTable* table, char* name, uint32_t salary, FILE* outputFile) {
     uint32_t hash = jenkins_one_at_a_time_hash(name) % table->size;
 
-#if defined(_WIN32) || defined(_WIN64)
-    EnterCriticalSection(&table->writeLock);
-#else
     pthread_mutex_lock(&table->writeLock);
-#endif
     table->lockAcquisitions++;
     fprintf(outputFile, "WRITE LOCK ACQUIRED\n");
 
@@ -64,11 +55,7 @@ void insert(ConcurrentHashTable* table, char* name, uint32_t salary, FILE* outpu
 
     fprintf(outputFile, "WRITE LOCK RELEASED\n");
 
-#if defined(_WIN32) || defined(_WIN64)
-    LeaveCriticalSection(&table->writeLock);
-#else
     pthread_mutex_unlock(&table->writeLock);
-#endif
     table->lockReleases++;
     fprintf(outputFile, "INSERT,%u,%s,%u\n", hash, name, salary);
 }
@@ -76,11 +63,7 @@ void insert(ConcurrentHashTable* table, char* name, uint32_t salary, FILE* outpu
 void delete(ConcurrentHashTable* table, char* name, FILE* outputFile) {
     uint32_t hash = jenkins_one_at_a_time_hash(name) % table->size;
 
-#if defined(_WIN32) || defined(_WIN64)
-    EnterCriticalSection(&table->writeLock);
-#else
     pthread_mutex_lock(&table->writeLock);
-#endif
     table->lockAcquisitions++;
     fprintf(outputFile, "WRITE LOCK ACQUIRED\n");
 
@@ -103,11 +86,7 @@ void delete(ConcurrentHashTable* table, char* name, FILE* outputFile) {
 
     fprintf(outputFile, "WRITE LOCK RELEASED\n");
 
-#if defined(_WIN32) || defined(_WIN64)
-    LeaveCriticalSection(&table->writeLock);
-#else
     pthread_mutex_unlock(&table->writeLock);
-#endif
     table->lockReleases++;
     fprintf(outputFile, "DELETE,%s\n", name);
 }
@@ -115,11 +94,7 @@ void delete(ConcurrentHashTable* table, char* name, FILE* outputFile) {
 uint32_t search(ConcurrentHashTable* table, char* name, FILE* outputFile) {
     uint32_t hash = jenkins_one_at_a_time_hash(name) % table->size;
 
-#if defined(_WIN32) || defined(_WIN64)
-    EnterCriticalSection(&table->readLock);
-#else
     pthread_rwlock_rdlock(&table->rwLock);
-#endif
     table->lockAcquisitions++;
     fprintf(outputFile, "READ LOCK ACQUIRED\n");
 
@@ -129,11 +104,7 @@ uint32_t search(ConcurrentHashTable* table, char* name, FILE* outputFile) {
         if (strcmp(current->name, name) == 0) {
             fprintf(outputFile, "READ LOCK RELEASED\n");
 
-#if defined(_WIN32) || defined(_WIN64)
-            LeaveCriticalSection(&table->readLock);
-#else
             pthread_rwlock_unlock(&table->rwLock);
-#endif
             table->lockReleases++;
             fprintf(outputFile, "SEARCH,%s\n", name);
             return current->salary;
@@ -143,22 +114,14 @@ uint32_t search(ConcurrentHashTable* table, char* name, FILE* outputFile) {
 
     fprintf(outputFile, "READ LOCK RELEASED\n");
 
-#if defined(_WIN32) || defined(_WIN64)
-    LeaveCriticalSection(&table->readLock);
-#else
     pthread_rwlock_unlock(&table->rwLock);
-#endif
     table->lockReleases++;
     fprintf(outputFile, "SEARCH,%s\n", name);
     return 0;
 }
 
 void print_table(ConcurrentHashTable* table, FILE* outputFile) {
-#if defined(_WIN32) || defined(_WIN64)
-    EnterCriticalSection(&table->readLock);
-#else
     pthread_rwlock_rdlock(&table->rwLock);
-#endif
     table->lockAcquisitions++;
     fprintf(outputFile, "READ LOCK ACQUIRED\n");
 
@@ -172,10 +135,6 @@ void print_table(ConcurrentHashTable* table, FILE* outputFile) {
 
     fprintf(outputFile, "READ LOCK RELEASED\n");
 
-#if defined(_WIN32) || defined(_WIN64)
-    LeaveCriticalSection(&table->readLock);
-#else
     pthread_rwlock_unlock(&table->rwLock);
-#endif
     table->lockReleases++;
 }

@@ -2,12 +2,7 @@
 #define HASH_TABLE_H
 
 #include <stdint.h>
-
-#if defined(_WIN32) || defined(_WIN64)
-#include <windows.h>
-#else
 #include <pthread.h>
-#endif
 
 typedef struct hash_struct {
     uint32_t hash;
@@ -19,13 +14,8 @@ typedef struct hash_struct {
 typedef struct {
     hashRecord** table;
     int size;
-#if defined(_WIN32) || defined(_WIN64)
-    CRITICAL_SECTION writeLock;  // Critical section for write lock
-    CRITICAL_SECTION readLock;   // Critical section for read lock
-#else
     pthread_mutex_t writeLock;  // Mutex for write lock
     pthread_rwlock_t rwLock;    // Read-write lock for read operations
-#endif
     int lockAcquisitions;
     int lockReleases;
 } ConcurrentHashTable;

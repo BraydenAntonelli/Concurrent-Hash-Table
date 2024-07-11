@@ -1,19 +1,12 @@
 CC = gcc
-CFLAGS = -Wall
-
-# Detect platform
-ifeq ($(OS),Windows_NT)
-    LDFLAGS =
-else
-    LDFLAGS = -pthread
-endif
+CFLAGS = -Wall -pthread
 
 OBJ = chash.o hash_table.o
 
 all: chash
 
 chash: $(OBJ)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o chash $(OBJ)
+	$(CC) $(CFLAGS) -o chash $(OBJ)
 
 chash.o: chash.c hash_table.h
 	$(CC) $(CFLAGS) -c chash.c
