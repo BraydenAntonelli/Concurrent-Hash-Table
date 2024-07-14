@@ -3,7 +3,9 @@
 #include <string.h>
 #include <stdint.h>
 #include <pthread.h>
+#include <time.h>
 #include "hash_table.h"
+
 
 // Jenkins's one_at_a_time hash function
 uint32_t jenkins_one_at_a_time_hash(char* key) {
@@ -42,10 +44,11 @@ ConcurrentHashTable* create_hash_table(int size) {
 
 void insert(ConcurrentHashTable* table, char* name, uint32_t salary, FILE* outputFile) {
     uint32_t hash = jenkins_one_at_a_time_hash(name) % table->size;
+    time_t timestamp = time(NULL);
 
     pthread_mutex_lock(&table->writeLock);
     __sync_add_and_fetch(&table->lockAcquisitions, 1); // Atomic increment
-    fprintf(outputFile, "WRITE LOCK ACQUIRED\n");
+    fprintf(outputFile, "%ld,WRITE LOCK ACQUIRED\n", timestamp);
 
     hashRecord* current = table->table[hash];
 
@@ -70,19 +73,20 @@ void insert(ConcurrentHashTable* table, char* name, uint32_t salary, FILE* outpu
         current->salary = salary;
     }
 
-    fprintf(outputFile, "WRITE LOCK RELEASED\n");
+    fprintf(outputFile, "%ld,WRITE LOCK RELEASED\n", timestamp);
 
     pthread_mutex_unlock(&table->writeLock);
     __sync_add_and_fetch(&table->lockReleases, 1); // Atomic increment
-    fprintf(outputFile, "INSERT,%u,%s,%u\n", hash, name, salary);
+    fprintf(outputFile, "%ld,INSERT,%s,%u\n", timestamp, name, salary);
 }
 
 void delete(ConcurrentHashTable* table, char* name, FILE* outputFile) {
     uint32_t hash = jenkins_one_at_a_time_hash(name) % table->size;
+    time_t timestamp = time(NULL);
 
     pthread_mutex_lock(&table->writeLock);
     __sync_add_and_fetch(&table->lockAcquisitions, 1); // Atomic increment
-    fprintf(outputFile, "WRITE LOCK ACQUIRED\n");
+    fprintf(outputFile, "%ld,WRITE LOCK ACQUIRED\n", timestamp);
 
     hashRecord* current = table->table[hash];
     hashRecord* prev = NULL;
@@ -101,35 +105,36 @@ void delete(ConcurrentHashTable* table, char* name, FILE* outputFile) {
         free(current);
     }
 
-    fprintf(outputFile, "WRITE LOCK RELEASED\n");
+    fprintf(outputFile, "%ld,WRITE LOCK RELEASED\n", timestamp);
 
     pthread_mutex_unlock(&table->writeLock);
     __sync_add_and_fetch(&table->lockReleases, 1); // Atomic increment
-    fprintf(outputFile, "DELETE,%s\n", name);
+    fprintf(outputFile, "%ld,DELETE,%s\n", timestamp, name);
 }
 
 uint32_t search(ConcurrentHashTable* table, char* name, FILE* outputFile) {
     uint32_t hash = jenkins_one_at_a_time_hash(name) % table->size;
+    time_t timestamp = time(NULL);
 
     pthread_rwlock_rdlock(&table->rwLock);
     __sync_add_and_fetch(&table->lockAcquisitions, 1); // Atomic increment
-    fprintf(outputFile, "READ LOCK ACQUIRED\n");
+    fprintf(outputFile, "%ld,READ LOCK ACQUIRED\n", timestamp);
 
     hashRecord* current = table->table[hash];
 
     while (current != NULL) {
         if (strcmp(current->name, name) == 0) {
-            fprintf(outputFile, "READ LOCK RELEASED\n");
+            fprintf(outputFile, "%ld,READ LOCK RELEASED\n", timestamp);
 
             pthread_rwlock_unlock(&table->rwLock);
             __sync_add_and_fetch(&table->lockReleases, 1); // Atomic increment
-            fprintf(outputFile, "SEARCH,%s\n", name);
+            fprintf(outputFile, "%ld,SEARCH,%s\n", timestamp, name);
             return current->salary;
         }
         current = current->next;
     }
 
-    fprintf(outputFile, "READ LOCK RELEASED\n");
+    fprintf(outputFile, "%ld,READ LOCK RELEASED\n", timestamp);
 
     pthread_rwlock_unlock(&table->rwLock);
     __sync_add_and_fetch(&table->lockReleases, 1); // Atomic increment
@@ -138,9 +143,11 @@ uint32_t search(ConcurrentHashTable* table, char* name, FILE* outputFile) {
 }
 
 void print_table(ConcurrentHashTable* table, FILE* outputFile) {
+    time_t timestamp = time(NULL);
+
     pthread_rwlock_rdlock(&table->rwLock);
     __sync_add_and_fetch(&table->lockAcquisitions, 1); // Atomic increment
-    fprintf(outputFile, "READ LOCK ACQUIRED\n");
+    fprintf(outputFile, "%ld,READ LOCK ACQUIRED\n", timestamp);
 
     for (int i = 0; i < table->size; i++) {
         hashRecord* current = table->table[i];
@@ -150,7 +157,7 @@ void print_table(ConcurrentHashTable* table, FILE* outputFile) {
         }
     }
 
-    fprintf(outputFile, "READ LOCK RELEASED\n");
+    fprintf(outputFile, "%ld,READ LOCK RELEASED\n", timestamp);
 
     pthread_rwlock_unlock(&table->rwLock);
     __sync_add_and_fetch(&table->lockReleases, 1); // Atomic increment
