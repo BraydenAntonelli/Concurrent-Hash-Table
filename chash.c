@@ -37,14 +37,11 @@ void execute_commands(ConcurrentHashTable* table) {
             }
         } else if (strcmp(cmd, "print") == 0) {
             print_table(table, outputFile);
-        } else if (strcmp(cmd, "threads") == 0) {
-            fprintf(outputFile, "Running %s threads\n", strtok(NULL, ","));
         }
     }
 
     fprintf(outputFile, "\nNumber of lock acquisitions: %d\n", table->lockAcquisitions);
     fprintf(outputFile, "Number of lock releases: %d\n", table->lockReleases);
-
     fprintf(outputFile, "Final Table:\n");
     print_table(table, outputFile);
 
