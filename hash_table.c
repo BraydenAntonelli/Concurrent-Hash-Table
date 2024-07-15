@@ -6,7 +6,6 @@
 #include <time.h>
 #include "hash_table.h"
 
-
 // Jenkins's one_at_a_time hash function
 uint32_t jenkins_one_at_a_time_hash(char* key) {
     size_t len = strlen(key);
@@ -22,6 +21,7 @@ uint32_t jenkins_one_at_a_time_hash(char* key) {
     return hash;
 }
 
+// Function to create and initialize a concurrent hash table
 ConcurrentHashTable* create_hash_table(int size) {
     ConcurrentHashTable* table = (ConcurrentHashTable*)malloc(sizeof(ConcurrentHashTable));
     if (table == NULL) {
@@ -42,6 +42,7 @@ ConcurrentHashTable* create_hash_table(int size) {
     return table;
 }
 
+// Function to insert or update a record in the hash table
 void insert(ConcurrentHashTable* table, char* name, uint32_t salary, FILE* outputFile) {
     uint32_t hash = jenkins_one_at_a_time_hash(name) % table->size;
     time_t timestamp = time(NULL);
@@ -80,6 +81,7 @@ void insert(ConcurrentHashTable* table, char* name, uint32_t salary, FILE* outpu
     fprintf(outputFile, "%ld,INSERT,%s,%u\n", timestamp, name, salary);
 }
 
+// Function to delete a record from the hash table
 void delete(ConcurrentHashTable* table, char* name, FILE* outputFile) {
     uint32_t hash = jenkins_one_at_a_time_hash(name) % table->size;
     time_t timestamp = time(NULL);
@@ -112,7 +114,8 @@ void delete(ConcurrentHashTable* table, char* name, FILE* outputFile) {
     fprintf(outputFile, "%ld,DELETE,%s\n", timestamp, name);
 }
 
-uint32_t search(ConcurrentHashTable* table, char* name, FILE* outputFile) {
+// Function to search for a record in the hash table
+void search(ConcurrentHashTable* table, char* name, FILE* outputFile) {
     uint32_t hash = jenkins_one_at_a_time_hash(name) % table->size;
     time_t timestamp = time(NULL);
 
@@ -129,7 +132,8 @@ uint32_t search(ConcurrentHashTable* table, char* name, FILE* outputFile) {
             pthread_rwlock_unlock(&table->rwLock);
             __sync_add_and_fetch(&table->lockReleases, 1); // Atomic increment
             fprintf(outputFile, "%ld,SEARCH,%s\n", timestamp, name);
-            return current->salary;
+            fprintf(outputFile, "%u,%s,%u\n", current->hash, current->name, current->salary);
+            return;
         }
         current = current->next;
     }
@@ -138,10 +142,11 @@ uint32_t search(ConcurrentHashTable* table, char* name, FILE* outputFile) {
 
     pthread_rwlock_unlock(&table->rwLock);
     __sync_add_and_fetch(&table->lockReleases, 1); // Atomic increment
-    fprintf(outputFile, "SEARCH,%s\n", name);
-    return 0;
+    fprintf(outputFile, "%ld,SEARCH,%s\n", timestamp, name);
+    fprintf(outputFile, "No Record Found\n");
 }
 
+// Function to print all records in the hash table
 void print_table(ConcurrentHashTable* table, FILE* outputFile) {
     time_t timestamp = time(NULL);
 
