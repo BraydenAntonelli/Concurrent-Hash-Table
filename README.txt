@@ -31,4 +31,4 @@ The program produces an output file named `output.txt` containing the results of
 
 ## AI Use Citation
 
-This project implementation was assisted by AI-generated suggestions provided by ChatGPT, a language model developed by OpenAI.
+This project's basic overall implementation was assisted by AI-generated suggestions provided by ChatGPT, a language model developed by OpenAI. After that, the team used this overall base and refined it to meet project specifications properly.
