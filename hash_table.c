@@ -37,8 +37,11 @@ ConcurrentHashTable* create_hash_table(int size) {
     table->size = size;
     pthread_mutex_init(&table->writeLock, NULL);
     pthread_rwlock_init(&table->rwLock, NULL);
+    pthread_cond_init(&table->insertCondition, NULL);
     table->lockAcquisitions = 0;
     table->lockReleases = 0;
+    table->insertionsDone = 0;
+    table->totalInsertions = 0;  // Initialize totalInsertions
     return table;
 }
 
@@ -46,6 +49,8 @@ ConcurrentHashTable* create_hash_table(int size) {
 void insert(ConcurrentHashTable* table, char* name, uint32_t salary, FILE* outputFile) {
     uint32_t hash = jenkins_one_at_a_time_hash(name) % table->size;
     time_t timestamp = time(NULL);
+
+    fprintf(outputFile, "%ld,INSERT,%s,%u\n", timestamp, name, salary); // Log the insert command
 
     pthread_mutex_lock(&table->writeLock);
     __sync_add_and_fetch(&table->lockAcquisitions, 1); // Atomic increment
@@ -74,11 +79,16 @@ void insert(ConcurrentHashTable* table, char* name, uint32_t salary, FILE* outpu
         current->salary = salary;
     }
 
+    table->insertionsDone++;
+    if (table->insertionsDone == table->totalInsertions) {
+        pthread_cond_broadcast(&table->insertCondition);
+        fprintf(outputFile, "%ld,SIGNALING done with INSERTs\n", timestamp);
+    }
+
     fprintf(outputFile, "%ld,WRITE LOCK RELEASED\n", timestamp);
 
     pthread_mutex_unlock(&table->writeLock);
     __sync_add_and_fetch(&table->lockReleases, 1); // Atomic increment
-    fprintf(outputFile, "%ld,INSERT,%s,%u\n", timestamp, name, salary);
 }
 
 // Function to delete a record from the hash table
@@ -89,6 +99,12 @@ void delete(ConcurrentHashTable* table, char* name, FILE* outputFile) {
     pthread_mutex_lock(&table->writeLock);
     __sync_add_and_fetch(&table->lockAcquisitions, 1); // Atomic increment
     fprintf(outputFile, "%ld,WRITE LOCK ACQUIRED\n", timestamp);
+
+    // Wait for all insertions to complete before proceeding with delete
+    if (table->insertionsDone < table->totalInsertions) {
+        fprintf(outputFile, "%ld,WAITING on INSERTs to complete\n", timestamp);
+        pthread_cond_wait(&table->insertCondition, &table->writeLock);
+    }
 
     hashRecord* current = table->table[hash];
     hashRecord* prev = NULL;

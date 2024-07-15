@@ -14,12 +14,15 @@ typedef struct hash_struct {
 
 // Structure to represent the concurrent hash table
 typedef struct {
-    hashRecord** table;           // Array of pointers to hash records
-    int size;                     // Size of the hash table
-    pthread_mutex_t writeLock;    // Mutex for write lock
-    pthread_rwlock_t rwLock;      // Read-write lock for read operations
-    int lockAcquisitions;         // Counter for lock acquisitions
-    int lockReleases;             // Counter for lock releases
+    hashRecord** table;               // Array of pointers to hash records
+    int size;                         // Size of the hash table
+    pthread_mutex_t writeLock;        // Mutex for write lock
+    pthread_rwlock_t rwLock;          // Read-write lock for read operations
+    pthread_cond_t insertCondition;   // Condition variable for insertions
+    int lockAcquisitions;             // Counter for lock acquisitions
+    int lockReleases;                 // Counter for lock releases
+    int insertionsDone;               // Counter for completed insertions
+    int totalInsertions;              // Total number of insertions to be done
 } ConcurrentHashTable;
 
 // Function declarations
