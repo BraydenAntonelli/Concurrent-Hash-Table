@@ -49,7 +49,7 @@ void execute_commands(ConcurrentHashTable* table) {
     }
 
     // Print summary information
-    fprintf(outputFile, "\n\nNumber of lock acquisitions: %d\n", table->lockAcquisitions+1);
+    fprintf(outputFile, "\nNumber of lock acquisitions: %d\n", table->lockAcquisitions+1);
     fprintf(outputFile, "Number of lock releases: %d\n", table->lockReleases+1);
     fprintf(outputFile, "Final Table:\n");
     print_table(table, outputFile);
