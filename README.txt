@@ -1,4 +1,4 @@
-BY: Brayden Antonelli, , ,
+BY: Brayden Antonelli, Christopher Bowerfind , James Salzer , Jonathan Connor
 
 # Concurrent Hash Table Project
 
