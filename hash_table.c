@@ -166,7 +166,6 @@ void search(ConcurrentHashTable *table, char *name, FILE *outputFile)
 
     hashRecord *current = table->table[hash];
 
-    fprintf(outputFile, "%lld: Searching for %s\n", get_timestamp_in_nanoseconds(), name);
     while (current != NULL)
     {
         fprintf(outputFile, "%lld: Checking record with name %s\n", get_timestamp_in_nanoseconds(), current->name);
@@ -185,7 +184,7 @@ void search(ConcurrentHashTable *table, char *name, FILE *outputFile)
     }
 
     // Record not found
-    fprintf(outputFile, "%lld: SEARCH NOT FOUND NOT FOUND\n", get_timestamp_in_nanoseconds());
+    fprintf(outputFile, "%lld: SEARCH: NOT FOUND NOT FOUND\n", get_timestamp_in_nanoseconds());
     fprintf(outputFile, "%lld: READ LOCK RELEASED\n", get_timestamp_in_nanoseconds());
 
     pthread_rwlock_unlock(&table->rwLock);
