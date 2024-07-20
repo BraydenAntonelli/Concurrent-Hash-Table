@@ -7,6 +7,7 @@
 // Structure to store individual records in the hash table
 typedef struct hash_struct
 {
+    uint32_t full_hash;       // Stores the entire hash without modulo operation
     uint32_t hash;            // Hash value of the key
     char name[50];            // Key (name)
     uint32_t salary;          // Value (salary)

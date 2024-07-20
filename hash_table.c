@@ -24,7 +24,6 @@ uint32_t jenkins_one_at_a_time_hash(char *key)
     hash += (hash << 3);
     hash ^= (hash >> 11);
     hash += (hash << 15);
-    printf("Name %s: = %" PRIu32 "\n", key, hash);
     return hash;
 }
 
@@ -57,11 +56,11 @@ ConcurrentHashTable *create_hash_table(int size, int numberOfInsertions)
 
 void insert(ConcurrentHashTable *table, char *name, uint32_t salary, FILE *outputFile)
 {
-    uint32_t hash = jenkins_one_at_a_time_hash(name) % table->size;
-    printf("The returned vale %" PRIu32 "\n", hash);
+    uint32_t full_hash = jenkins_one_at_a_time_hash(name);
+    uint32_t hash = full_hash % table->size;
     pthread_mutex_lock(&table->writeLock);
     __sync_add_and_fetch(&table->lockAcquisitions, 1); // Atomic increment
-    fprintf(outputFile, "%lld: Insert, %" PRIu32 ", %s, %u\n", get_timestamp_in_nanoseconds(), hash, name, salary);
+    fprintf(outputFile, "%lld: Insert, %" PRIu32 ", %s, %u\n", get_timestamp_in_nanoseconds(), full_hash, name, salary);
     fprintf(outputFile, "%lld: WRITE LOCK ACQUIRED\n", get_timestamp_in_nanoseconds());
 
     hashRecord *current = table->table[hash];
@@ -83,6 +82,7 @@ void insert(ConcurrentHashTable *table, char *name, uint32_t salary, FILE *outpu
         strncpy(newRecord->name, name, sizeof(newRecord->name) - 1);
         newRecord->name[sizeof(newRecord->name) - 1] = '\0'; // Ensure null-termination
         newRecord->salary = salary;
+        newRecord->full_hash = full_hash;
         newRecord->next = table->table[hash];
         table->table[hash] = newRecord;
     }
@@ -192,23 +192,42 @@ void search(ConcurrentHashTable *table, char *name, FILE *outputFile)
     __sync_add_and_fetch(&table->lockReleases, 1); // Atomic increment
 }
 
-// Function to print all records in the hash table
+// Comparator function for sorting hash records by full_hash
+int compare_by_full_hash(const void *a, const void *b)
+{
+    const hashRecord *record1 = *(const hashRecord **)a;
+    const hashRecord *record2 = *(const hashRecord **)b;
+    return (record1->full_hash > record2->full_hash) - (record1->full_hash < record2->full_hash);
+}
+
+// Function to print all records in the hash table sorted by full_hash
 void print_table(ConcurrentHashTable *table, FILE *outputFile)
 {
-    printf("Printing the final table");
     pthread_rwlock_rdlock(&table->rwLock);
     __sync_add_and_fetch(&table->lockAcquisitions, 1); // Atomic increment
     fprintf(outputFile, "%lld: READ LOCK ACQUIRED\n", get_timestamp_in_nanoseconds());
 
+    // First, collect all records into a dynamic array
+    hashRecord **allRecords = malloc(table->size * sizeof(hashRecord *));
+    int count = 0;
     for (int i = 0; i < table->size; i++)
     {
-        hashRecord *current = table->table[i];
-        while (current)
+        for (hashRecord *current = table->table[i]; current != NULL; current = current->next)
         {
-            fprintf(outputFile, "%" PRIu32 ",%s,%u\n", current->hash, current->name, current->salary);
-            current = current->next;
+            allRecords[count++] = current;
         }
     }
+
+    // Sort all records by full_hash
+    qsort(allRecords, count, sizeof(hashRecord *), compare_by_full_hash);
+
+    // Print all records sorted by full_hash
+    for (int i = 0; i < count; i++)
+    {
+        fprintf(outputFile, "%" PRIu32 ",%s,%u\n", allRecords[i]->full_hash, allRecords[i]->name, allRecords[i]->salary);
+    }
+
+    free(allRecords); // Clean up the dynamically allocated array
 
     fprintf(outputFile, "%lld: READ LOCK RELEASED\n", get_timestamp_in_nanoseconds());
     pthread_rwlock_unlock(&table->rwLock);
