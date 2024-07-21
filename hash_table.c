@@ -176,7 +176,7 @@ void search(ConcurrentHashTable *table, char *name, FILE *outputFile)
 
             pthread_rwlock_unlock(&table->rwLock);
             __sync_add_and_fetch(&table->lockReleases, 1); // Atomic increment
-            fprintf(outputFile, "%lld: SEARCH,%s\n", get_timestamp_in_nanoseconds(), name);
+            fprintf(outputFile, "%lld: SEARCH:%s\n", get_timestamp_in_nanoseconds(), name);
             fprintf(outputFile, "%u,%s,%u\n", current->hash, current->name, current->salary);
             return;
         }
