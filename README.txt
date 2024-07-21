@@ -31,4 +31,4 @@ The program produces an output file named `output.txt` containing the results of
 
 ## AI Use Citation
 
-This project's basic overall implementation was assisted by AI-generated suggestions provided by ChatGPT, a language model developed by OpenAI. After that, the team used this overall base and refined it to meet project specifications properly.
+This project implementation was assisted by AI-generated suggestions provided by ChatGPT, a language model developed by OpenAI. Specifically, the AI was used to generate the initial structure and base code for the concurrent hash table and its associated functions. Prompts used included requests for creating a concurrent hash table with pthreads, generating hash functions, and handling file I/O for commands and output. The provided code was thoroughly reviewed, modified, and extended to meet the specific requirements of the assignment, ensuring correctness and adherence to the project's specifications.
