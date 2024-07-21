@@ -23,11 +23,17 @@ The program produces an output file named `output.txt` containing the results of
 
 ## Files
 
+All of the following files must be in the same directory:
+
+- `commands.txt`: Input file.
 - `chash.c`: Main program file.
 - `hash_table.h`: Header file for the hash table.
 - `hash_table.c`: Implementation of the hash table.
 - `Makefile`: Makefile to build the project.
+
+Remaining files:
 - `README.txt`: This documentation file.
+- `output.txt`: The output file (will be generated even if not in the directory).
 
 ## AI Use Citation
 
